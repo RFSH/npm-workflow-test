@@ -1,13 +1,10 @@
-name: Publish to npmjs and update the usage
+name: Publish to npmjs
 
 on: [push]
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    outputs:
-      changed: ${{steps.check.outputs.changed}}
-      version: ${{steps.check.outputs.version}}
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
@@ -17,36 +14,19 @@ jobs:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
       - name: Check if version has been updated
-        id: check
+        id: version-check
         uses: EndBug/version-check@v2
       - name: Publish new version
-        if: steps.check.outputs.changed == 'true'
+        if: steps.version-check.outputs.changed == 'true'
         run: |
-          echo "Version change found in commit ${{ steps.check.outputs.commit }}! New version: ${{ steps.check.outputs.version }} (${{ steps.check.outputs.type }})"
+          echo "Version change found in commit ${{ steps.version-check.outputs.commit }}" >> $GITHUB_STEP_SUMMARY
+          echo "New version: ${{ steps.version-check.outputs.version }} (${{ steps.version-check.outputs.type }})" >> $GITHUB_STEP_SUMMARY
           npm ci --include=dev
           npm publish
+          echo "Successfully published the new version! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "[Link to npm package](https://www.npmjs.com/package/@isrd-isi-edu/chaise)" >> $GITHUB_STEP_SUMMARY
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-  # create-pr-in-user-repo:
-  #   runs-on: ubuntu-latest
-  #   needs: publish
-  #   steps:
-  #     - name: Create PR
-  #       if: needs.publish.outputs.changed == 'true'
-  #       uses: actions/checkout@v4
-  #       with:
-  #         repository: RFSH/npm-workflow-test-user
-  #         path: npm-workflow-test-user
-  #       run: |
-  #         cd npm-workflow-test-user
-  #         git config user.name github-actions
-  #         git config user.email github-actions@github.com
-  #         npm install -g npm-check-updates
-  #         ncu npm-workflow-test -u
-  #         npm install --include=dev
-  #         git add .
-  #         git commit -m "Bump version to ${{ needs.publish.outputs.version }}"
-  #         git push origin
-  #         gh pr create -B base_branch -H master --title 'Bump version to ${{ needs.publish.outputs.version }}' --body 'Created by Github action'
-
-
+      - name: Skip publishing
+        if: steps.version-check.outputs.changed == 'false'
+        run: echo "No version change detected!" >> $GITHUB_STEP_SUMMARY
