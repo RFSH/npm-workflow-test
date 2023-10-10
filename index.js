@@ -1,3 +1,3 @@
 const test = () => {
-  console.log('this is working! v0.0.3');
+  console.log('this is working! v0.0.4');
 }
